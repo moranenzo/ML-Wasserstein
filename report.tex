@@ -1,0 +1,172 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{tabularx}
+\usepackage{caption}
+\usepackage[colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue]{hyperref}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{setspace}
+\usepackage[absolute,overlay]{textpos} % Pour positionner librement
+\setlength{\TPHorizModule}{1mm}
+\setlength{\TPVertModule}{1mm}
+\geometry{margin=1in}
+\setstretch{1.2}
+
+\title{Wasserstein distance-based clustering \\ \large Machine Learning - Optimal Transport}
+\author{Enzo MORAN}
+\date{}
+
+\begin{document}
+
+% Positionnement du logo en haut à droite (ajuste les coordonnées si besoin)
+\begin{textblock*}{30mm}(170mm,10mm) % largeur bloc 30mm, position (x=170mm,y=10mm)
+    \includegraphics[width=25mm]{ensae.png}
+\end{textblock*}
+
+\maketitle
+
+\tableofcontents
+
+\newpage
+
+\section*{Introduction}
+\addcontentsline{toc}{section}{Introduction}
+
+The objective of this project is to model a macroeconomic variable as a time series and to forecast its short-term evolution using the software \texttt{R} (the full code is included in the file \texttt{gsimonnet\_emoran.zip}).
+
+\section{K-means}
+
+\subsection{Yubo Zhuang et al.(2022) definitions of K-means}
+
+
+
+
+\section{title}
+
+\subsection{title}
+
+\subsubsection{title}
+
+
+
+
+\appendix
+
+\section{Appendix A: ...}
+\label{appendix:label}
+
+
+\section{Appendix B: ...}
+\label{appendix:label}
+
+
+\end{document}
+
+
+--------------------------------------------------------------------------------
+FIGURES
+
+------------------------------
+introduire la figure graph.png :
+------------------------------
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{graph.png}
+\caption{title}
+\label{fig:graph}
+\end{figure}
+
+------------------------------
+mettre 2 images cote à cote :
+------------------------------
+\begin{figure}[H]
+\centering
+\begin{minipage}{0.48\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{residuals_acf.png}
+  \caption{ACF of the residuals}
+  \label{fig:acf_residuals}
+\end{minipage}
+\hfill
+\begin{minipage}{0.48\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{residuals_distribution.png}
+  \caption{Distribution of the residuals compared to a Gaussian density}
+  \label{fig:density_residuals}
+\end{minipage}
+\end{figure}
+
+------------------------------
+mettre une table :
+------------------------------
+\begin{table}[H]
+\centering
+\caption{title}
+\label{tab:label}
+\small
+\makebox[\textwidth][c]{%
+\begin{tabular}{lll}
+\toprule
+Coefficient & Estimate & Std. Error \\
+\midrule
+AR(1) & -0.3197 & 0.0483 \\
+\bottomrule
+\end{tabular}
+}
+\normalsize
+\end{table}
+
+------------------------------
+mettre une équation :
+------------------------------
+\[
+\mathbb{E}[X_{T+1} \mid \mathcal{F}_T, Y_{T+1}] = a_{11} X_T + a_{12} Y_T + \rho \frac{\sigma_X}{\sigma_Y} \cdot \varepsilon_{Y,T+1},
+\]
+
+
+--------------------------------------------------------------------------------
+LateX : TEXTE
+
+------------------------------
+faire référence à une figure : Figure~\ref{fig:graph}
+------------------------------
+mettre en gras : \textbf{txt}
+------------------------------
+citer un fichier : \texttt{txt}
+------------------------------
+mettre des maths au milieu du texte : \( Y_{T+1} \)
+------------------------------
+sauter une grosse ligne : \vspace{0.5\baselineskip}
+------------------------------
+mettre un hyperlien : \href{https://lien}{texte}
+------------------------------
+
+--------------------------------------------------------------------------------
+Equations 
+
+------------------------------
+mettre un gros espace entre 2 equations sur la même ligne : \quad
+------------------------------
+chapeau pour des grandes lettres : \widehat{}
+------------------------------
+équivalence : \iff
+------------------------------
+barre verticale : \mid
+------------------------------
+faire des matrices ou des vecteurs : 
+\begin{pmatrix}
+a_{11} & a_{12} \\
+a_{21} & a_{22}
+\end{pmatrix}
+------------------------------
+aligner ses équations : 
+\begin{align*}
+a &= b \\
+a &= a
+\end{align*}
