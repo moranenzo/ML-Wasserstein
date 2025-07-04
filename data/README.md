@@ -52,6 +52,7 @@ For each, rename the downloaded `iris.gpkg` file to:
 
 ```
 data/
+├── BASE_TD_FILO_DEC_IRIS_2020.csv
 ├── iris_75.gpkg
 ├── iris_77.gpkg
 ├── iris_78.gpkg
@@ -60,7 +61,7 @@ data/
 ├── iris_93.gpkg
 ├── iris_94.gpkg
 ├── iris_95.gpkg
-├── base-ic-evol-struct-distrib-revenus-iris-2019.csv
+├── iris_france.gpkg
 └── README.md
 ```
 
