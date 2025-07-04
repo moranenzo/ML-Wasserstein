@@ -4,20 +4,23 @@ This folder does **not include raw data files**, as they may be large, subject t
 
 ## 1. INSEE IRIS Shapefiles (Geometries of IRIS zones)
 
-**Official source**:
-All the IRIS Shapefiles come from the INSEE website, you can find them at the INSE's open portal https://geoservices.ign.fr/irisge#telechargementter2025
+**Official source**:  
+All IRIS shapefiles are available from INSEE via the IGN geoservices portal:  
+👉 https://geoservices.ign.fr/irisge#telechargementter2025
 
-### 1.1 France:
+### 1.1 France
 
-Download the "France métropolitaine" from 2025 in GPKG format and rename iris.gpkg into iris_france_gpkg.
+Download the "France métropolitaine" shapefile for 2025 in GPKG format.  
+Then rename the file `iris.gpkg` to:
 
-**Required file:**
-- `iris_france.gpkg`  
+- `iris_france.gpkg`
 
+### 1.2 Île-de-France Departments
 
-### 1.2 Department of Ile-de-France:
+Download the shapefiles for the following departments (75, 77, 78, 91, 92, 93, 94, 95) for the year 2025, each in GPKG format.  
+For each, rename the downloaded `iris.gpkg` file to:
 
-Download the IRIS shapefiles for departments 75, 77, 78, 91, 92, 93, 94 and 95 (departments of Ile-de-France) from 2025 in GPKG format and rename the iris.gpkg of each folder into iris_{number of the department}. You should have all those 8 GPKG documents : 
+- `iris_{department_number}.gpkg`
 
 **Required files**:  
 - `iris_75.gpkg`  
@@ -29,21 +32,45 @@ Download the IRIS shapefiles for departments 75, 77, 78, 91, 92, 93, 94 and 95 (
 - `iris_94.gpkg`  
 - `iris_95.gpkg`  
 
-**How to organize**: Place all `.gpkg` files directly in the `/data` directory.
+📁 Place all `.gpkg` files directly in the `/data` folder.
 
 ---
 
-### 2. Socioeconomic Data by IRIS (Income, Deciles, etc.)
+## 2. Socioeconomic Data by IRIS (Income, Deciles, etc.)
 
 **Required file**:  
 - `BASE_TD_FILO_DEC_IRIS_2020.csv`
 
 **Official source**:  
-https://www.insee.fr/fr/statistiques/7233950
+👉 https://www.insee.fr/fr/statistiques/7233950
 
-**How to organize**: Place the `.csv` file in the `/data` directory.
+📁 Place this `.csv` file directly in the `/data` folder.
 
 ---
 
 ## 📁 Expected Folder Structure
+
+```
+data/
+├── iris_75.gpkg
+├── iris_77.gpkg
+├── iris_78.gpkg
+├── iris_91.gpkg
+├── iris_92.gpkg
+├── iris_93.gpkg
+├── iris_94.gpkg
+├── iris_95.gpkg
+├── base-ic-evol-struct-distrib-revenus-iris-2019.csv
+└── README.md
+```
+
+---
+
+## 📝 Notes
+
+- These files are not included in the Git repository to avoid versioning large binaries or redistributing official datasets.
+- Make sure that the filenames match exactly those expected in the notebooks.
+- If you rename or move any file, update the relevant paths in the notebooks or in `utils.py`.
+
+---
 
