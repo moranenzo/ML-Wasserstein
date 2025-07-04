@@ -1,0 +1,10 @@
+*.csv
+*.gpkg
+*.xlsx
+*.zip
+*.DBF
+*.SHP
+*.SHX
+
+__pycache__/
+*.pyc

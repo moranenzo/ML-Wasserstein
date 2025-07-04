@@ -33,26 +33,21 @@ def wbarycenter_clustering_1d(data, support, n_clusters, n_iter=20, weights=None
     rng = np.random.default_rng(random_state)
     n_samples = data.shape[0]
 
-    # Normalize input distributions
-    distributions = data / data.sum(axis=1, keepdims=True)
-    if weights is None:
-        weights = np.ones_like(support) / len(support)
-
     # Random initial cluster assignments
     assignments = rng.integers(low=0, high=n_clusters, size=n_samples)
 
     for _ in range(n_iter):
         barycenters = []
         for k in range(n_clusters):
-            members = distributions[assignments == k]
+            members = data[assignments == k]
             if len(members) == 0:
-                barycenters.append(distributions[rng.integers(n_samples)])
+                barycenters.append(data[rng.integers(n_samples)])
             else:
                 barycenters.append(members.mean(axis=0))
 
         # Reassign
         for i in range(n_samples):
-            dists = [ot.wasserstein_1d(support, support, distributions[i], bary) for bary in barycenters]
+            dists = [np.mean(np.abs(np.sort(data[i]) - np.sort(bary))) for bary in barycenters]
             assignments[i] = int(np.argmin(dists))
 
     return assignments, barycenters
