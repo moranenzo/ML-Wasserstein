@@ -36,7 +36,7 @@ For each, rename the downloaded `iris.gpkg` file to:
 
 ---
 
-## 2. Socioeconomic Data by IRIS (Income, Deciles, etc.)
+## 2. Income Data by IRIS (Income, Deciles, etc.)
 
 **Required file**:  
 - `BASE_TD_FILO_DEC_IRIS_2020.csv`
@@ -45,6 +45,26 @@ For each, rename the downloaded `iris.gpkg` file to:
 👉 https://www.insee.fr/fr/statistiques/7233950
 
 📁 Place this `.csv` file directly in the `/data` folder.
+
+---
+
+## 3. Average Income per age 
+
+**Required file**:  
+- `reve-niv-vie-individu-age-med.xlsx`
+
+**Official source**:  
+👉 https://www.insee.fr/fr/statistiques/2416878
+
+---
+
+## 4. Population per Age by IRIS
+
+**Required file**:
+- `base-ic-evol-struct-pop-2020.xlsx`
+
+**Official source**:
+👉 https://www.insee.fr/fr/statistiques/7704076
 
 ---
 
