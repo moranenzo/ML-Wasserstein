@@ -171,3 +171,47 @@ def wbarycenter_clustering_nd(data, n_clusters, n_iter=20, reg=1e-1, random_stat
     barycenters = [b.reshape(shape) for b in barycenters_flat]
 
     return assignments, barycenters
+
+
+"""
+def wasserstein_kmeans(data, n_clusters=3, n_iter=10, random_state=42):
+    rng = np.random.default_rng(random_state)
+    n_samples = data.shape[0]
+    shape = data.shape[1:]
+    n_bins = np.prod(shape)
+
+    # Normalization
+    data = np.where(data < 1e-12, 1e-12, data)
+    data = data / data.sum(axis=(1, 2), keepdims=True)
+
+    M = create_nd_cost_matrix(shape)
+
+    # Initialize barycenters with random samples
+    barycenters = data[rng.choice(n_samples, size=n_clusters, replace=False)]
+    assignments = np.zeros(n_samples, dtype=int)
+
+    for it in tqdm(range(n_iter), desc="Wasserstein k-means"):
+        # Assign each sample to the closest barycenter
+        for i in range(n_samples):
+            dists = [
+                ot.emd2(data[i].ravel(), bary.ravel(), M)
+                for bary in barycenters
+            ]
+            assignments[i] = np.argmin(dists)
+
+        # Update barycenters
+        new_barycenters = []
+        for k in range(n_clusters):
+            members = data[assignments == k]
+            if len(members) == 0:
+                # Empty cluster: reinitialize with a random sample
+                new_barycenters.append(data[rng.integers(n_samples)])
+            else:
+                A = members.reshape(len(members), n_bins).T  # shape (n_bins, n_members)
+                bary = ot.barycenter(A, M)
+                new_barycenters.append(bary.reshape(shape))
+
+        barycenters = new_barycenters
+
+    return assignments, barycenters
+"""
