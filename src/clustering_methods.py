@@ -76,7 +76,7 @@ def wbarycenter_clustering(data, n_clusters=3, n_iter=10, reg=1e-1, random_state
             Cluster assignments.
         barycenters: list of np.ndarray
             Cluster barycenters.
-    """    
+    """
     rng = np.random.default_rng(random_state)
     n_samples = data.shape[0]
     shape = data.shape[1:]
@@ -98,16 +98,16 @@ def wbarycenter_clustering(data, n_clusters=3, n_iter=10, reg=1e-1, random_state
     cost_matrix = ot.dist(coords, coords)
 
     for it in tqdm(range(n_iter), desc="Wasserstein clustering iterations"):
-        
+
         # Step 1: Assignment - assign each distribution to the closest barycenter
         assignments = np.zeros(n_samples, dtype=int)
-        
+
         for i in tqdm(range(n_samples), desc="Assigning to barycenters"):
             distances = np.zeros(n_clusters, dtype=float)
             for j in range(n_clusters):
                 distances[j] = ot.emd2(data_flat[i], bary_flat[j], cost_matrix)
             assignments[i] = np.argmin(distances)
-    
+
         # Step 2: Update - recompute the barycenters
         bary_flat = []
         for k in tqdm(range(n_clusters), desc="Recomputing barycenters"):
@@ -118,7 +118,7 @@ def wbarycenter_clustering(data, n_clusters=3, n_iter=10, reg=1e-1, random_state
             if len(members) == 0:
                 idx = rng.integers(0, data.shape[0])
                 bary_flat.append(data_flat[idx])
-                continue 
+                continue
 
             # Compute regularized Wasserstein barycenter
             bary_flat.append(ot.bregman.barycenter(members, cost_matrix, reg))
