@@ -54,164 +54,76 @@ def wbarycenter_clustering_1d(data, support, n_clusters, n_iter=20, weights=None
     return assignments, barycenters
 
 
-def create_nd_cost_matrix(shape):
+def wbarycenter_clustering(data, n_clusters=3, n_iter=10, reg=1e-1, random_state=None):
     """
-    Create a cost matrix for an n-dimensional grid of shape `shape`.
-    Cost is the squared Euclidean distance between bin coordinates.
-    """
-    grid = np.indices(shape).reshape(len(shape), -1).T  # shape (n_bins, n_dims)
-    return ot.utils.dist(grid, grid) ** 2  # shape (n_bins, n_bins)
-
-
-def wbarycenter_clustering_nd(data, n_clusters, n_iter=20, reg=1e-1, random_state=42, debug=False):
-    """
-    Wasserstein barycenter clustering for n-dimensional histograms.
+    Wasserstein K-Means barycenter-based clustering by Yubo Zhuang et al. (2022)
+    for n-dimensional histograms.
 
     Parameters:
-        data: np.ndarray of shape (n_samples, *shape)
-            Input histograms (e.g., 2D: (n_samples, n_age, n_decile))
+        data: np.ndarray of shape (n_samples, shape)
+            Input histograms
         n_clusters: int
             Number of clusters.
         n_iter: int
             Number of iterations.
         reg: float
             Entropic regularization strength.
-        random_state: int
-            For reproducibility.
-        debug: bool
-            If True, prints debug information (NaNs, zero rows, sums, etc.)
+        random_state: int or None
+            Random seed for reproducibility.
 
     Returns:
         assignments: np.ndarray of shape (n_samples,)
             Cluster assignments.
-        barycenters: list of np.ndarray of shape `shape`
+        barycenters: list of np.ndarray
             Cluster barycenters.
-    """
+    """    
     rng = np.random.default_rng(random_state)
     n_samples = data.shape[0]
     shape = data.shape[1:]
     n_bins = np.prod(shape)
 
-    # Flatten and normalize each histogram
-    data_flat = data.reshape(n_samples, n_bins)
-    data_flat = np.where(data_flat < 1e-12, 1e-12, data_flat)
-    row_sums = data_flat.sum(axis=1, keepdims=True)
-    zero_rows = np.where(row_sums.squeeze() == 0)[0]
-    if debug and len(zero_rows) > 0:
-        print(f"[DEBUG] Warning: {len(zero_rows)} zero-sum rows in input data.")
-    data_flat = data_flat / row_sums
+    # Flatten the input distributions
+    data_flat = data.reshape(n_samples, n_bins) 
+    # Optional: uncomment below (if needed) to avoid numerical issues with NaN or empty barycenters
+    # data_flat = np.where(data_flat < 1e-12, 1e-12, data_flat)
 
-    if debug:
-        print(f"[DEBUG] data_flat contains NaN: {np.isnan(data_flat).any()}")
-        print(f"[DEBUG] data_flat contains inf: {np.isinf(data_flat).any()}")
-        print(f"[DEBUG] data_flat min: {data_flat.min()}, max: {data_flat.max()}")
+    # Normalize distributions to ensure they are valid probabilities
+    data_flat /= data_flat.sum(axis=1, keepdims=True)
 
-    # Initialize cluster assignments randomly
-    assignments = rng.integers(0, n_clusters, size=n_samples)
+    # Initialization: randomly choose initial barycenters among the data
+    bary_flat = data_flat[rng.choice(n_samples, size=n_clusters, replace=False)]
 
     # Compute cost matrix
-    cost_matrix = create_nd_cost_matrix(shape)
+    coords = np.array([(i, j) for i in range(shape[0]) for j in range(shape[1])])
+    cost_matrix = ot.dist(coords, coords)
 
     for it in tqdm(range(n_iter), desc="Wasserstein clustering iterations"):
-        barycenters_flat = []
-        for k in range(n_clusters):
-            members = data_flat[assignments == k].T  # (n_bins, n_members)
-            if members.shape[1] == 0:
-                if debug:
-                    print(f"[DEBUG] No members in cluster {k}, reinitializing randomly.")
-                bary = data_flat[rng.integers(n_samples)]
-            else:
-                bary = ot.bregman.barycenter(
-                    members,
-                    M=cost_matrix,
-                    reg=reg,
-                    numItermax=3000
-                )
-            if debug:
-                if not np.all(np.isfinite(bary)):
-                    print(f"[DEBUG] Non-finite barycenter for cluster {k} at iter {it}")
-                if bary.sum() == 0:
-                    print(f"[DEBUG] Zero barycenter for cluster {k} at iter {it}")
-            barycenters_flat.append(bary)
+        
+        # Step 1: Assignment - assign each distribution to the closest barycenter
+        assignments = np.zeros(n_samples, dtype=int)
+        
+        for i in tqdm(range(n_samples), desc="Assigning to barycenters"):
+            distances = np.zeros(n_clusters, dtype=float)
+            for j in range(n_clusters):
+                distances[j] = ot.emd2(data_flat[i], bary_flat[j], cost_matrix)
+            assignments[i] = np.argmin(distances)
+    
+        # Step 2: Update - recompute the barycenters
+        bary_flat = []
+        for k in tqdm(range(n_clusters), desc="Recomputing barycenters"):
+            # Select all members of cluster k
+            members = data_flat[assignments == k].T
 
-        barycenters_flat = np.array(barycenters_flat)
+            # If the cluster is empty, reinitialize with a random sample
+            if len(members) == 0:
+                idx = rng.integers(0, data.shape[0])
+                bary_flat.append(data_flat[idx])
+                continue 
 
-        # Reassign samples
-        for i in tqdm(range(n_samples), desc="Reassigning clusters", leave=False):
-            pi = data_flat[i]
-            pi_sum = pi.sum()
-            if pi_sum == 0 or not np.all(np.isfinite(pi)):
-                if debug:
-                    print(f"[DEBUG] Sample {i} has invalid pi: sum={pi_sum}, finite={np.all(np.isfinite(pi))}")
-                continue
-            pi = pi / pi_sum
-
-            dists = []
-            for j, bary in enumerate(barycenters_flat):
-                bary_sum = bary.sum()
-                if bary_sum == 0 or not np.all(np.isfinite(bary)):
-                    if debug:
-                        print(f"[DEBUG] Cluster {j} barycenter invalid during reassignment.")
-                    dists.append(np.inf)
-                    continue
-                bary_norm = bary / bary_sum
-
-                try:
-                    dist = ot.emd2(pi, bary_norm, cost_matrix)
-                except AssertionError as e:
-                    if debug:
-                        print(f"[DEBUG] EMD2 failed at sample {i}, cluster {j}: {str(e)}")
-                        print(f"[DEBUG] pi.sum() = {pi.sum()}, bary_norm.sum() = {bary_norm.sum()}")
-                    dist = np.inf
-                dists.append(dist)
-
-            assignments[i] = np.argmin(dists)
+            # Compute regularized Wasserstein barycenter
+            bary_flat.append(ot.bregman.barycenter(members, cost_matrix, reg))
 
     # Reshape barycenters
-    barycenters = [b.reshape(shape) for b in barycenters_flat]
+    barycenters = [b.reshape(shape) for b in bary_flat]
 
     return assignments, barycenters
-
-
-"""
-def wasserstein_kmeans(data, n_clusters=3, n_iter=10, random_state=42):
-    rng = np.random.default_rng(random_state)
-    n_samples = data.shape[0]
-    shape = data.shape[1:]
-    n_bins = np.prod(shape)
-
-    # Normalization
-    data = np.where(data < 1e-12, 1e-12, data)
-    data = data / data.sum(axis=(1, 2), keepdims=True)
-
-    M = create_nd_cost_matrix(shape)
-
-    # Initialize barycenters with random samples
-    barycenters = data[rng.choice(n_samples, size=n_clusters, replace=False)]
-    assignments = np.zeros(n_samples, dtype=int)
-
-    for it in tqdm(range(n_iter), desc="Wasserstein k-means"):
-        # Assign each sample to the closest barycenter
-        for i in range(n_samples):
-            dists = [
-                ot.emd2(data[i].ravel(), bary.ravel(), M)
-                for bary in barycenters
-            ]
-            assignments[i] = np.argmin(dists)
-
-        # Update barycenters
-        new_barycenters = []
-        for k in range(n_clusters):
-            members = data[assignments == k]
-            if len(members) == 0:
-                # Empty cluster: reinitialize with a random sample
-                new_barycenters.append(data[rng.integers(n_samples)])
-            else:
-                A = members.reshape(len(members), n_bins).T  # shape (n_bins, n_members)
-                bary = ot.barycenter(A, M)
-                new_barycenters.append(bary.reshape(shape))
-
-        barycenters = new_barycenters
-
-    return assignments, barycenters
-"""
