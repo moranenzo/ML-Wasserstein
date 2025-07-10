@@ -1,6 +1,8 @@
 import numpy as np
 import ot  # POT library
 
+from joblib import Parallel, delayed
+
 
 def reconstruct_joint_distribution_ot(age_weights, income_values, income_median_by_age):
     """
@@ -27,3 +29,39 @@ def reconstruct_joint_distribution_ot(age_weights, income_values, income_median_
     pi = ot.emd(a, b, C)
 
     return pi
+
+
+def compute_row(data_flat_T, cost_matrix, i):
+    return ot.emd2(data_flat_T[:, i], data_flat_T, cost_matrix)
+
+
+def computeDistanceMatrix(data, save=False, filepath='../data/Dis_mat.txt'):
+    """
+    Compute the symmetric pairwise Wasserstein distance matrix between histograms.
+    """
+    n_samples = data.shape[0]
+    shape = data.shape[1:]
+    n_bins = np.prod(shape)
+
+    # Flatten and normalize
+    data_flat = data.reshape(n_samples, n_bins)
+    data_flat /= data_flat.sum(axis=1, keepdims=True)
+    data_flat_T = data_flat.T
+
+    # Cost matrix
+    coords = np.array([(i, j) for i in range(shape[0]) for j in range(shape[1])])
+    cost_matrix = ot.dist(coords, coords)
+
+    # Parallel computation of rows
+    rows = Parallel(n_jobs=-1)(
+        delayed(compute_row)(data_flat_T, cost_matrix, i)
+        for i in range(n_samples)
+    )
+    pairwise = np.vstack(rows)
+
+    # Save if requested
+    if save:
+        np.savetxt(filepath, pairwise, fmt='%.6e')
+        print(f"➡️ Pairwise distance matrix saved to: {filepath}")
+
+    return pairwise
