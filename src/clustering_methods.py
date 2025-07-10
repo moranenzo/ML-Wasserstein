@@ -2,10 +2,12 @@ import numpy as np
 import ot
 from tqdm.notebook import tqdm
 
+from utils import computeDistanceMatrix
 
-# K-Means clustering barycenter-based from Zhuang et al. (2022)
 
-def wbarycenter_clustering_1d(data, support, n_clusters, n_iter=20, weights=None, random_state=42):
+# B-WKM : K-Means clustering barycenter-based from Zhuang et al. (2022)
+
+def bary_WKMeans_1d(data, support, n_clusters, n_iter=20, weights=None, random_state=42):
     """
     Wasserstein K-Means barycenter-based clustering by Yubo Zhuang et al. (2022)
     for 1D distributions with same support.
@@ -53,7 +55,7 @@ def wbarycenter_clustering_1d(data, support, n_clusters, n_iter=20, weights=None
     return assignments, barycenters
 
 
-def wbarycenter_clustering(data, n_clusters=3, n_iter=10, reg=1e-1, random_state=None):
+def bary_WKMeans(data, n_clusters=3, n_iter=10, reg=1e-1, random_state=None):
     """
     Wasserstein K-Means barycenter-based clustering by Yubo Zhuang et al. (2022)
     for n-dimensional histograms.
@@ -128,35 +130,20 @@ def wbarycenter_clustering(data, n_clusters=3, n_iter=10, reg=1e-1, random_state
     return assignments, barycenters
 
 
-# K-Means clustering pairwise-based from Zhuang et al. (2022)
+# D-WKM : K-Means clustering pairwise-based from Zhuang et al. (2022)
 
-def wpairwise_clustering(data, n_clusters=2, n_iter=20, random_state=None):
+def dist_WKMeans(data, dist_matrix=None, n_clusters=2, n_iter=20, random_state=None):
     rng = np.random.default_rng(random_state)
     n_samples = data.shape[0]
     shape = data.shape[1:]
     n_bins = np.prod(shape)
 
-    barycenters = data[rng.choice(n_samples, size=n_clusters, replace=False)]
-
-    # Flatten distributions and barycenters
-    data_flat = data.reshape(n_samples, n_bins) 
-    # if NaN or empty barycenters, add the line below :
-    # data_flat = np.where(data_flat < 1e-12, 1e-12, data_flat)
-
-    # Normalize to have probabilities
+    # Flatten and normalize distributions
+    data_flat = data.reshape(n_samples, n_bins)
     data_flat /= data_flat.sum(axis=1, keepdims=True)
 
-    # Compute cost matrix
-    coords = np.array([(i, j) for i in range(shape[0]) for j in range(shape[1])])
-    cost_matrix = ot.dist(coords, coords)
-
-    # Compute full pairwise distance matrix (symmetric)
-    pairwise_w2 = np.zeros((n_samples, n_samples))
-    for i in tqdm(range(n_samples), desc="Computing pairwise distance matrix..."):
-        for j in range(i, n_samples):
-            d = ot.emd2(data_flat[i], data_flat[j], cost_matrix)
-            pairwise_w2[i, j] = d
-            pairwise_w2[j, i] = d
+    if not dist_matrix:
+        dist_matrix = computeDistanceMatrix(data)
 
     # Initialize assignments randomly
     assignments = rng.integers(0, n_clusters, size=n_samples)
@@ -169,7 +156,7 @@ def wpairwise_clustering(data, n_clusters=2, n_iter=20, random_state=None):
             for k in range(n_clusters):
                 members = np.where(assignments == k)[0]
                 if len(members) > 0:
-                    avg_dists[k] = pairwise_w2[i, members].mean()
+                    avg_dists[k] = dist_matrix[i, members].mean()
                 else:
                     avg_dists[k] = np.inf
             new_assignments[i] = np.argmin(avg_dists)
@@ -181,3 +168,6 @@ def wpairwise_clustering(data, n_clusters=2, n_iter=20, random_state=None):
         assignments = new_assignments
 
     return assignments
+
+
+# W-SDP : Semidefinite Program relaxation of the distance-based K-means
