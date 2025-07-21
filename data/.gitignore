@@ -5,6 +5,7 @@
 *.DBF
 *.SHP
 *.SHX
+*.txt
 
 __pycache__/
 *.pyc
