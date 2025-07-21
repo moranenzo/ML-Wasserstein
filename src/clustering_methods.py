@@ -55,7 +55,7 @@ def bary_WKMeans_1d(data, support, n_clusters, n_iter=20, weights=None, random_s
     return assignments, barycenters
 
 
-def bary_WKMeans(data, n_clusters=3, n_iter=10, reg=1e-1, random_state=None):
+def bary_WKMeans(data, supports, n_clusters=3, n_iter=10, reg=1e-1, random_state=None):
     """
     Wasserstein K-Means barycenter-based clustering by Yubo Zhuang et al. (2022)
     for n-dimensional histograms.
@@ -83,20 +83,14 @@ def bary_WKMeans(data, n_clusters=3, n_iter=10, reg=1e-1, random_state=None):
     shape = data.shape[1:]
     n_bins = np.prod(shape)
 
-    # Flatten the input distributions
-    data_flat = data.reshape(n_samples, n_bins) 
-    # Optional: uncomment below (if needed) to avoid numerical issues with NaN or empty barycenters
-    # data_flat = np.where(data_flat < 1e-12, 1e-12, data_flat)
-
-    # Normalize distributions to ensure they are valid probabilities
+    # Flatten and Normalize the input distributions
+    data_flat = data.reshape(n_samples, n_bins)
     data_flat /= data_flat.sum(axis=1, keepdims=True)
 
     # Initialization: randomly choose initial barycenters among the data
-    bary_flat = data_flat[rng.choice(n_samples, size=n_clusters, replace=False)]
-
-    # Compute cost matrix
-    coords = np.array([(i, j) for i in range(shape[0]) for j in range(shape[1])])
-    cost_matrix = ot.dist(coords, coords)
+    indices = rng.choice(n_samples, size=n_clusters, replace=False)
+    bary_flat = data_flat[indices]
+    bary_supports = supports[indices]
 
     for it in tqdm(range(n_iter), desc="Wasserstein clustering iterations"):
 
@@ -106,44 +100,75 @@ def bary_WKMeans(data, n_clusters=3, n_iter=10, reg=1e-1, random_state=None):
         for i in tqdm(range(n_samples), desc="Assigning to barycenters"):
             distances = np.zeros(n_clusters, dtype=float)
             for j in range(n_clusters):
+                # Compute cost matrix
+                cost_matrix = ot.dist(supports[i], supports[j])
                 distances[j] = ot.emd2(data_flat[i], bary_flat[j], cost_matrix)
             assignments[i] = np.argmin(distances)
 
         # Step 2: Update - recompute the barycenters
         bary_flat = []
+        bary_supports = []
+
         for k in tqdm(range(n_clusters), desc="Recomputing barycenters"):
-            # Select all members of cluster k
-            members = data_flat[assignments == k].T
+            # Indices des distributions du cluster k
+            cluster_indices = np.where(assignments == k)[0]
 
             # If the cluster is empty, reinitialize with a random sample
-            if len(members) == 0:
+            if len(cluster_indices) == 0:
                 idx = rng.integers(0, data.shape[0])
                 bary_flat.append(data_flat[idx])
+                bary_supports.append(supports[idx])
                 continue
 
-            # Compute regularized Wasserstein barycenter
-            bary_flat.append(ot.bregman.barycenter(members, cost_matrix, reg))
+            # Récupérer les histogrammes et les supports associés
+            cluster_hists = [data_flat[i] for i in cluster_indices]
+            cluster_supports = [supports[i] for i in cluster_indices]
+
+            # Construire le support commun (union des supports)
+            combined_support = np.unique(np.vstack(cluster_supports), axis=0)
+
+            # Reprojeter chaque histogramme sur le support commun
+            projected_hists = []
+            for hist, supp in zip(cluster_hists, cluster_supports):
+                proj = np.zeros(len(combined_support))
+                for i, atom in enumerate(supp):
+                    # Trouver l’indice correspondant dans le support commun
+                    idx = np.where((combined_support == atom).all(axis=1))[0][0]
+                    proj[idx] = hist[i]
+                projected_hists.append(proj)
+
+            projected_hists = np.array(projected_hists).T  # (n_bins, n_distributions)
+
+            # Recalculer la cost matrix sur le support commun
+            cost_matrix = ot.dist(combined_support, combined_support)
+
+            # Calcul du barycentre régularisé
+            bary = ot.bregman.barycenter(projected_hists, cost_matrix, reg)
+
+            # Stocker le barycentre et son support
+            bary_flat.append(bary)
+            bary_supports.append(combined_support)
 
     # Reshape barycenters
-    barycenters = [b.reshape(shape) for b in bary_flat]
+    bary_hists = [b.reshape(shape) for b in bary_flat]
 
-    return assignments, barycenters
+    return assignments, bary_hists, bary_supports
 
 
 # D-WKM : K-Means clustering pairwise-based from Zhuang et al. (2022)
 
-def dist_WKMeans(data, dist_matrix=None, n_clusters=2, n_iter=20, random_state=None):
+def dist_WKMeans(data, supports, dist_matrix=None, n_clusters=2, n_iter=10, random_state=None):
     rng = np.random.default_rng(random_state)
     n_samples = data.shape[0]
     shape = data.shape[1:]
     n_bins = np.prod(shape)
 
-    # Flatten and normalize distributions
+    # Flatten and Normalize the input distributions
     data_flat = data.reshape(n_samples, n_bins)
     data_flat /= data_flat.sum(axis=1, keepdims=True)
 
-    if not dist_matrix:
-        dist_matrix = computeDistanceMatrix(data)
+    if dist_matrix is None:
+        dist_matrix = computeDistanceMatrix(data, supports)
 
     # Initialize assignments randomly
     assignments = rng.integers(0, n_clusters, size=n_samples)
