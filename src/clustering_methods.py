@@ -186,6 +186,10 @@ def dist_WKMeans(data, supports, dist_matrix=None, n_clusters=2, n_iter=10, rand
                     avg_dists[k] = np.inf
             new_assignments[i] = np.argmin(avg_dists)
 
+        for k in range(n_clusters):
+            if len(np.where(new_assignments == k)[0]) == 0:
+                new_assignments[rng.integers(0, n_samples)] = k
+
         if np.array_equal(assignments, new_assignments):
             print(f"Converged at iteration {it}")
             break
