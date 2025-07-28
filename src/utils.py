@@ -40,32 +40,43 @@ def reconstruct_joint_distribution_ot(age_weights, income_values, income_median_
     return pi, support
 
 
-def compute_distance(i, j, data_flat, supports):
-    """Compute the Wasserstein distance between distributions i and j using their specific supports."""
-    cost_matrix = ot.dist(supports[i], supports[j])
+def compute_distance(i, j, data_flat, cost_matrix):
+    """Compute the Wasserstein distance between histograms i and j using a shared cost matrix."""
     return ot.emd2(data_flat[i], data_flat[j], cost_matrix)
 
 
-def computeDistanceMatrix(data, supports, save=False, filepath='../data/Dis_mat.txt'):
+def computeDistanceMatrix(data, grid, save=False, filepath='../data/Dis_mat.txt'):
     """
-    Compute the symmetric pairwise Wasserstein distance matrix between histograms.
+    Compute the symmetric pairwise Wasserstein distance matrix between histograms
+    projected on a common grid.
+
+    Parameters:
+        data: np.ndarray of shape (n_samples, n_bins)
+            Projected histograms (e.g. projected_distributions).
+        grid: np.ndarray of shape (n_bins, 2)
+            Common support grid.
+        save: bool
+            Whether to save the matrix.
+        filepath: str
+            Path for saving the matrix (if save=True).
     """
     n_samples = data.shape[0]
-    n_bins = np.prod(data.shape[1:])
 
-    # Flatten and normalize
-    data_flat = data.reshape(n_samples, n_bins)
-    data_flat /= data_flat.sum(axis=1, keepdims=True)
+    # Normalize histograms
+    data_flat = data / data.sum(axis=1, keepdims=True)
+
+    # Compute cost matrix once for the common grid
+    cost_matrix = ot.dist(grid, grid)
 
     pairwise = np.zeros((n_samples, n_samples))
 
-    # Compute only upper triangle (symmetric matrix)
+    # Parallelized computation
     results = Parallel(n_jobs=-1)(
-        delayed(compute_distance)(i, j, data_flat, supports)
+        delayed(compute_distance)(i, j, data_flat, cost_matrix)
         for i in range(n_samples) for j in range(i+1, n_samples)
     )
 
-    # Fill the matrix
+    # Fill the full matrix
     k = 0
     for i in range(n_samples):
         for j in range(i+1, n_samples):
