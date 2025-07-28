@@ -3,6 +3,8 @@ import ot  # POT library
 
 from joblib import Parallel, delayed
 
+import matplotlib.pyplot as plt
+
 
 def reconstruct_joint_distribution_ot(age_weights, income_values, income_median_by_age):
     """
@@ -38,6 +40,28 @@ def reconstruct_joint_distribution_ot(age_weights, income_values, income_median_
     ])
 
     return pi, support
+
+
+def create_regular_grid(n_bins_age=7, n_bins_income=9):
+    grid_age = np.linspace(0, 1, n_bins_age)
+    grid_income = np.linspace(0, 1, n_bins_income)
+
+    grid_x, grid_y = np.meshgrid(grid_age, grid_income, indexing='ij')
+    grid = np.stack([grid_x.ravel(), grid_y.ravel()], axis=1)  # shape (n_bins, 2)
+    return grid
+
+
+def project_distribution_on_grid(support, distribution, grid):
+    projected = np.zeros(len(grid))
+    for i in range(len(support)):
+        s = support[i]
+        mass = float(distribution[i])  # <-- cast explicite
+
+        distances = np.linalg.norm(grid - s, axis=1)
+        closest_idx = np.argmin(distances)
+        projected[closest_idx] += mass
+
+    return projected
 
 
 def compute_distance(i, j, data_flat, cost_matrix):
@@ -89,3 +113,31 @@ def computeDistanceMatrix(data, grid, save=False, filepath='../data/Dis_mat.txt'
         print(f"Pairwise distance matrix saved to: {filepath}")
 
     return pairwise
+
+
+# Plot
+
+def plot_projected_distribution(distribution, grid_shape, support_min, support_max, title="Distribution projetée"):
+    """
+    distribution : array de shape (n_bins_age * n_bins_income,)
+    grid_shape : (n_bins_age, n_bins_income)
+    support_min, support_max : array(2,) pour dénormaliser les axes
+    """
+    n_bins_age, n_bins_income = grid_shape
+
+    # Reshape en matrice
+    matrix = distribution.reshape(grid_shape)
+
+    # Définir les bornes en âge et revenu dénormalisés
+    age_min, income_min = support_min
+    age_max, income_max = support_max
+
+    extent = [income_min, income_max, age_min, age_max]  # [xmin, xmax, ymin, ymax]
+
+    plt.imshow(matrix, origin='lower', cmap='viridis', extent=extent, aspect='auto')
+    plt.title(title)
+    plt.xlabel("Revenu (échelle originale)")
+    plt.ylabel("Âge (échelle originale)")
+    plt.colorbar(label="Poids")
+    plt.grid(False)
+    plt.show()
