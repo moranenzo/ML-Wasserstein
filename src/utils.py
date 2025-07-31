@@ -64,11 +64,6 @@ def project_distribution_on_grid(support, distribution, grid):
     return projected
 
 
-def compute_distance(i, j, data_flat, cost_matrix):
-    """Compute the Wasserstein distance between histograms i and j using a shared cost matrix."""
-    return ot.emd2(data_flat[i], data_flat[j], cost_matrix)
-
-
 def computeDistanceMatrix(data, grid, save=False, filepath='../data/Dis_mat.txt'):
     """
     Compute the symmetric pairwise Wasserstein distance matrix between histograms
@@ -96,7 +91,7 @@ def computeDistanceMatrix(data, grid, save=False, filepath='../data/Dis_mat.txt'
 
     # Parallelized computation
     results = Parallel(n_jobs=-1)(
-        delayed(compute_distance)(i, j, data_flat, cost_matrix)
+        delayed(ot.emd2)(data_flat[i], data_flat[j], cost_matrix)
         for i in range(n_samples) for j in range(i+1, n_samples)
     )
 
@@ -113,6 +108,16 @@ def computeDistanceMatrix(data, grid, save=False, filepath='../data/Dis_mat.txt'
         print(f"Pairwise distance matrix saved to: {filepath}")
 
     return pairwise
+
+
+def compute_barycenter_for_cluster(k, assignments, data, cost_matrix, reg, seed):
+    rng_local = np.random.default_rng(seed)
+    indices_k = np.where(assignments == k)[0]
+    if len(indices_k) == 0:
+        return data[rng_local.integers(0, len(data))]
+    else:
+        cluster_hists = data[indices_k].T
+        return ot.bregman.barycenter(cluster_hists, cost_matrix, reg)
 
 
 # Plot

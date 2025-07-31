@@ -2,7 +2,9 @@ import numpy as np
 import ot
 from tqdm.notebook import tqdm
 
-from utils import computeDistanceMatrix
+from utils import computeDistanceMatrix, compute_barycenter_for_cluster
+
+from joblib import Parallel, delayed
 
 
 # B-WKM : K-Means clustering barycenter-based from Zhuang et al. (2022)
@@ -55,7 +57,7 @@ def bary_WKMeans_1d(data, support, n_clusters, n_iter=20, weights=None, random_s
     return assignments, barycenters
 
 
-def bary_WKMeans(data, grid, n_clusters=3, n_iter=10, reg=1e-1, random_state=None):
+def bary_WKMeans(data, grid, n_clusters=3, n_iter=20, reg=1e-1, random_state=None):
     """
     Wasserstein K-Means clustering for histograms with shared support.
 
@@ -94,10 +96,11 @@ def bary_WKMeans(data, grid, n_clusters=3, n_iter=10, reg=1e-1, random_state=Non
 
     for it in tqdm(range(n_iter), desc="Wasserstein K-Means iterations"):
         # Assignment step
-        distances = np.array([
-            [ot.emd2(data[i], barycenters[k], cost_matrix) for k in range(n_clusters)]
-            for i in range(n_samples)
-        ])
+        results = Parallel(n_jobs=-1)(
+            delayed(ot.emd2)(data[i], barycenters[k], cost_matrix)
+            for i in range(n_samples) for k in range(n_clusters)
+        )
+        distances = np.array(results).reshape(n_samples, n_clusters)
         new_assignments = distances.argmin(axis=1)
 
         # Stopping criterion
@@ -107,18 +110,16 @@ def bary_WKMeans(data, grid, n_clusters=3, n_iter=10, reg=1e-1, random_state=Non
 
         assignments = new_assignments
 
-        # Update step
-        new_barycenters = []
-        for k in range(n_clusters):
-            indices_k = np.where(assignments == k)[0]
-            if len(indices_k) == 0:
-                new_barycenters.append(data[rng.integers(0, n_samples)])
-            else:
-                cluster_hists = data[indices_k].T
-                bary = ot.bregman.barycenter(cluster_hists, cost_matrix, reg)
-                new_barycenters.append(bary)
+        # Generate new seeds for barycenters
+        seeds = rng.integers(0, 1e9, size=n_clusters)
 
-        barycenters = new_barycenters
+        # Barycenter update step (parallelized with independent seeds)
+        barycenters = Parallel(n_jobs=-1)(
+            delayed(compute_barycenter_for_cluster)(
+                k, assignments, data, cost_matrix, reg, seeds[k]
+            )
+            for k in range(n_clusters)
+        )
 
     return assignments, barycenters
 
