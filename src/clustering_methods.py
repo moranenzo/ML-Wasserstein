@@ -2,7 +2,7 @@ import numpy as np
 import ot
 from tqdm.notebook import tqdm
 
-from utils import computeDistanceMatrix, compute_barycenter_for_cluster
+from .utils import computeDistanceMatrix, compute_barycenter_for_cluster
 
 from joblib import Parallel, delayed
 
