@@ -12,10 +12,11 @@ from .clustering_methods import (
 )
 
 from .utils import (
-    reconstruct_joint_distribution_ot,
+    reconstruct_joint_distribution,
+    normalize_supports,
     create_regular_grid,
     project_distribution_on_grid,
     computeDistanceMatrix,
     compute_barycenter_for_cluster,
-    plot_projected_distribution
+    plot_projected_distributions
 )

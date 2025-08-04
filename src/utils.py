@@ -1,23 +1,30 @@
 import numpy as np
-import ot  # POT library
-
+import ot
 from joblib import Parallel, delayed
-
 import matplotlib.pyplot as plt
 
+"""
+utils.py
 
-def reconstruct_joint_distribution_ot(age_weights, income_values, income_median_by_age):
+Utility functions for joint distribution reconstruction, projection,
+distance matrix computation, barycenter calculation, and visualization
+in the context of age-income distributions using optimal transport.
+"""
+
+
+def reconstruct_joint_distribution(age_weights, income_values, income_median_by_age):
     """
-    Reconstruct the joint distribution between age groups and income levels for a given IRIS.
+    Reconstruct the joint distribution between age groups and income deciles
+    via discrete optimal transport using |income - median_income| cost.
 
     Parameters:
-        age_weights : Population counts for each age group T_i. ex : (A_1, ..., A_n)
-        income_values : Income values corresponding to the deciles. ex : (D_1, ..., D_9)
-        income_median_by_age : National median income for each age group. ex : (m(T_1), ..., m(T_n))
+        age_weights (array-like): Population counts by age group T_i. ex : (A_1, ..., A_n)
+        income_values (array-like): Values corresponding to the income deciles. ex : (D_1, ..., D_9)
+        income_median_by_age (array-like): National median income by age group. ex : (m(T_1), ..., m(T_n))
 
     Returns:
-        np.ndarray: Optimal transport plan pi,
-            (its a discrete approxi of the joint distribution between age and income)
+        pi (np.ndarray): Optimal transport plan (discrete approximation of the joint distribution between age and income)
+        support (np.ndarray): Support coordinates as (age_index, income_value)
     """
     age_weights = np.array(age_weights, dtype=np.float64)
     income_values = np.array(income_values, dtype=np.float64)
@@ -42,7 +49,37 @@ def reconstruct_joint_distribution_ot(age_weights, income_values, income_median_
     return pi, support
 
 
+def normalize_supports(supports):
+    """
+    Normalize multiple supports
+
+    Parameters:
+        supports (list of np.ndarray): List of d-dimensional points (arrays).
+
+    Returns:
+        normalized (list of np.ndarray): List of normalized supports.
+        min_vals (np.ndarray): Minimum values across all supports for each dimension.
+        max_vals (np.ndarray): Maximum values across all supports for each dimension.
+    """
+    all_supports = np.vstack(supports)
+    min_vals = all_supports.min(axis=0)
+    max_vals = all_supports.max(axis=0)
+    normalized = [(s - min_vals) / (max_vals - min_vals) for s in supports]
+    return normalized, min_vals, max_vals
+
+
 def create_regular_grid(n_bins_age=7, n_bins_income=9):
+    """
+    Create a regular 2D grid on the unit square [0,1] x [0,1].
+
+    Parameters:
+        n_bins_age (int): Number of bins in the age dimension.
+        n_bins_income (int): Number of bins in the income dimension.
+
+    Returns:
+        grid (np.ndarray): Array of shape (n_bins_age * n_bins_income, 2) containing grid coordinates.
+
+    """
     grid_age = np.linspace(0, 1, n_bins_age)
     grid_income = np.linspace(0, 1, n_bins_income)
 
@@ -52,6 +89,18 @@ def create_regular_grid(n_bins_age=7, n_bins_income=9):
 
 
 def project_distribution_on_grid(support, distribution, grid):
+    """
+    Project a discrete distribution defined on a support onto a fixed regular
+    grid by assigning the mass of each support point to the closest grid point.
+
+    Parameters:
+        support (np.ndarray): Support points of the distribution (shape: n_points x 2).
+        distribution (np.ndarray): Weights associated with each support point.
+        grid (np.ndarray): Coordinates of the grid points (shape: n_bins x 2).
+
+    Returns:
+        projected (np.ndarray): Histogram of the projected distribution on the grid (length = n_bins).
+    """
     projected = np.zeros(len(grid))
     for i in range(len(support)):
         s = support[i]
@@ -66,25 +115,22 @@ def project_distribution_on_grid(support, distribution, grid):
 
 def computeDistanceMatrix(data, grid, save=False, filepath='../data/Dis_mat.txt'):
     """
-    Compute the symmetric pairwise Wasserstein distance matrix between histograms
+    Compute the symmetric pairwise Wasserstein squared distance matrix between histograms
     projected on a common grid.
 
     Parameters:
-        data: np.ndarray of shape (n_samples, n_bins)
-            Projected histograms (e.g. projected_distributions).
-        grid: np.ndarray of shape (n_bins, 2)
-            Common support grid.
-        save: bool
-            Whether to save the matrix.
-        filepath: str
-            Path for saving the matrix (if save=True).
+        data (np.ndarray of shape (n_samples, n_bins)): Projected histograms.
+        grid (np.ndarray of shape (n_bins, 2)): Common support grid.
+        save (bool): Whether to save the matrix.
+        filepath (str): Path for saving the matrix (if save=True).
+    
+    Returns:
+        pairwise (np.ndarray): Symmetric distance matrix of shape (n_samples, n_samples).
     """
     n_samples = data.shape[0]
-
-    # Normalize histograms
+    # Normalize histograms to sum to 1
     data_flat = data / data.sum(axis=1, keepdims=True)
-
-    # Compute cost matrix once for the common grid
+    # Compute cost matrix between grid points
     cost_matrix = ot.dist(grid, grid)
 
     pairwise = np.zeros((n_samples, n_samples))
@@ -111,38 +157,73 @@ def computeDistanceMatrix(data, grid, save=False, filepath='../data/Dis_mat.txt'
 
 
 def compute_barycenter_for_cluster(k, assignments, data, cost_matrix, reg, seed):
-    rng_local = np.random.default_rng(seed)
-    indices_k = np.where(assignments == k)[0]
-    if len(indices_k) == 0:
-        return data[rng_local.integers(0, len(data))]
+    """
+    Compute the entropically regularized Wasserstein barycenter of
+    distributions assigned to cluster k.
+
+    If the cluster is empty, returns a random distribution from data.
+
+    Parameters
+        k (int): Index of the cluster.
+        assignments (np.ndarray): Current cluster assignments (length = n_samples).
+        data (np.ndarray): Histograms of all samples (shape: n_samples x n_bins).
+        cost_matrix (np.ndarray): Cost matrix between grid points.
+        reg (float): Entropic regularization parameter.
+        seed (int): Random seed for reproducibility.
+
+    Returns:
+        barycenter (np.ndarray): Computed barycenter histogram for cluster k.
+    """
+    rng = np.random.default_rng(seed)
+    indices = np.where(assignments == k)[0]
+
+    if len(indices) == 0:
+        # Return a random histogram if cluster is empty
+        return data[rng.integers(0, len(data))]
     else:
-        cluster_hists = data[indices_k].T
-        return ot.bregman.barycenter(cluster_hists, cost_matrix, reg)
+        cluster_hists = data[indices].T
+        barycenter = ot.bregman.barycenter(cluster_hists, cost_matrix, reg)
+        return barycenter
 
 
-# Plot
-
-def plot_projected_distribution(distribution, grid_shape, support_min, support_max, title="Distribution projetée"):
+def plot_projected_distributions(distributions, grid_shape, support_min, support_max, title="Projected Distribution"):
     """
-    distribution : array de shape (n_bins_age * n_bins_income,)
-    grid_shape : (n_bins_age, n_bins_income)
-    support_min, support_max : array(2,) pour dénormaliser les axes
+    Visualize one or more 2D projected distributions as images, with axes
+    rescaled to original units.
+
+    Parameters:
+        distributions (np.ndarray or list of np.ndarray): Single projected histogram (flattened with length = n_bins_age * n_bins_income) or a list of them.
+        grid_shape (tuple): Shape of the grid (n_bins_age, n_bins_income).
+        support_min (np.ndarray): Minimum values per dimension for rescaling axes.
+        support_max (np.ndarray): Maximum values per dimension for rescaling axes.
+        title (str, optional): Plot title.
+
+    Returns:
+        None
     """
-    n_bins_age, n_bins_income = grid_shape
+    if isinstance(distributions, np.ndarray):
+        distributions = [distributions]
 
-    # Reshape en matrice
-    matrix = distribution.reshape(grid_shape)
+    n = len(distributions)
+    for i in range(0, n, 3):
+        batch = distributions[i:i + 3]
+        n_cols = len(batch) if i>0 else 3
 
-    # Définir les bornes en âge et revenu dénormalisés
-    age_min, income_min = support_min
-    age_max, income_max = support_max
+        fig, axs = plt.subplots(1, n_cols, figsize=(5 * n_cols, 4))
 
-    extent = [income_min, income_max, age_min, age_max]  # [xmin, xmax, ymin, ymax]
+        # If only one row of subplots is returned as a single axis:
+        if n_cols == 1:
+            axs = [axs]
 
-    plt.imshow(matrix, origin='lower', cmap='viridis', extent=extent, aspect='auto')
-    plt.title(title)
-    plt.xlabel("Revenu (échelle originale)")
-    plt.ylabel("Âge (échelle originale)")
-    plt.colorbar(label="Poids")
-    plt.grid(False)
-    plt.show()
+        for j, distribution in enumerate(batch):
+            matrix = distribution.reshape(grid_shape)
+            extent = [support_min[1], support_max[1], support_min[0], support_max[0]] # [xmin, xmax, ymin, ymax]
+
+            im = axs[j].imshow(matrix, origin='lower', cmap='viridis', extent=extent, aspect='auto')
+            axs[j].set_title(f"{title} {i + j}")
+            axs[j].set_xlabel("Income (original scale)")
+            axs[j].set_ylabel("Age (original scale)")
+            fig.colorbar(im, ax=axs[j], orientation='vertical', label="Mass")
+
+        plt.tight_layout()
+        plt.show()
