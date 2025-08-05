@@ -192,11 +192,11 @@ def plot_projected_distributions(distributions, grid_shape, support_min, support
     rescaled to original units.
 
     Parameters:
-        distributions (np.ndarray or list of np.ndarray): Single projected histogram (flattened with length = n_bins_age * n_bins_income) or a list of them.
-        grid_shape (tuple): Shape of the grid (n_bins_age, n_bins_income).
-        support_min (np.ndarray): Minimum values per dimension for rescaling axes.
-        support_max (np.ndarray): Maximum values per dimension for rescaling axes.
-        title (str, optional): Plot title.
+        distributions (np.ndarray or list of np.ndarray): Single histogram or list of histograms (flattened).
+        grid_shape (tuple): Grid shape (n_bins_age, n_bins_income).
+        support_min (np.ndarray): Min values per dimension (for axis rescaling).
+        support_max (np.ndarray): Max values per dimension.
+        title (str): Base title for plots.
 
     Returns:
         None
@@ -205,25 +205,35 @@ def plot_projected_distributions(distributions, grid_shape, support_min, support
         distributions = [distributions]
 
     n = len(distributions)
-    for i in range(0, n, 3):
-        batch = distributions[i:i + 3]
-        n_cols = len(batch) if i>0 else 3
 
-        fig, axs = plt.subplots(1, n_cols, figsize=(5 * n_cols, 4))
+    # Determine layout
+    if n == 1:
+        n_rows, n_cols = 1, 1
+    elif n == 2:
+        n_rows, n_cols = 1, 2
+    elif n == 4:
+        n_rows, n_cols = 2, 2
+    else:
+        n_cols = 3
+        n_rows = int(np.ceil(n / 3))
 
-        # If only one row of subplots is returned as a single axis:
-        if n_cols == 1:
-            axs = [axs]
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows))
+    axs = np.array(axs).reshape(-1)  # Flatten in case it's 2D
 
-        for j, distribution in enumerate(batch):
-            matrix = distribution.reshape(grid_shape)
-            extent = [support_min[1], support_max[1], support_min[0], support_max[0]] # [xmin, xmax, ymin, ymax]
+    for i, dist in enumerate(distributions):
+        ax = axs[i]
+        matrix = dist.reshape(grid_shape)
+        extent = [support_min[1], support_max[1], support_min[0], support_max[0]]
 
-            im = axs[j].imshow(matrix, origin='lower', cmap='viridis', extent=extent, aspect='auto')
-            axs[j].set_title(f"{title} {i + j}")
-            axs[j].set_xlabel("Income (original scale)")
-            axs[j].set_ylabel("Age (original scale)")
-            fig.colorbar(im, ax=axs[j], orientation='vertical', label="Mass")
+        im = ax.imshow(matrix, origin='lower', cmap='viridis', extent=extent, aspect='auto')
+        ax.set_title(f"{title} {i}")
+        ax.set_xlabel("Income (original scale)")
+        ax.set_ylabel("Age (original scale)")
+        fig.colorbar(im, ax=ax, orientation='vertical', label="Mass")
 
-        plt.tight_layout()
-        plt.show()
+    # Hide any unused axes
+    for j in range(len(distributions), len(axs)):
+        axs[j].axis("off")
+
+    plt.tight_layout()
+    plt.show()
