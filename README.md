@@ -30,11 +30,10 @@ This notebook extends the analysis to **joint income–age distributions**, prov
 │   ├── IRIS.ipynb
 │   └── IRISxAGE.ipynb
 ├── src/
-│   ├── __init__.py           # Marks src as a Python package  
-│   ├── utils.py              # Helper functions (normalization, plotting, etc.)  
-│   └── clustering_methods.py # Implementation of clustering methods  
-├── results/                # Generated plots and maps  
-└── README.md               # Project documentation  
+│   ├── __init__.py             # Marks src as a Python package  
+│   ├── utils.py                # Helper functions (normalization, plotting, etc.)  
+│   └── clustering_methods.py   # Implementation of clustering methods  
+└── README.md 
 ```
 
 ## 📊 Results
