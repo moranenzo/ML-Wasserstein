@@ -7,6 +7,7 @@ primarily used in Wasserstein-based clustering of income distributions.
 
 # Explicit imports for convenience
 from .clustering_methods import (
+    bary_WKMeans_1d,
     bary_WKMeans,
     dist_WKMeans
 )
