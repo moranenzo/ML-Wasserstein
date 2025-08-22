@@ -1,38 +1,18 @@
 # 📁 `/data` Folder – Required Data Files
 
-This folder does **not include raw data files**, as they may be large, subject to license restrictions, or unsuitable for version control.
+This folder does **not include raw data files**.
 
-## 1. INSEE IRIS Shapefiles (Geometries of IRIS zones)
+## 1. INSEE IRIS Shapefile (Geometries of IRIS zones)
+
+**Required file** :
+- `coutours-iris.gpkg`
 
 **Official source**:  
 All IRIS shapefiles are available from INSEE via the IGN geoservices portal:  
 👉 https://geoservices.ign.fr/irisge#telechargementter2025
 
-### 1.1 France
+Download the "France métropolitaine" shapefile for 2024 in GPKG format.  
 
-Download the "France métropolitaine" shapefile for 2025 in GPKG format.  
-Then rename the file `iris.gpkg` to:
-
-- `iris_france.gpkg`
-
-### 1.2 Île-de-France Departments
-
-Download the shapefiles for the following departments (75, 77, 78, 91, 92, 93, 94, 95) for the year 2025, each in GPKG format.  
-For each, rename the downloaded `iris.gpkg` file to:
-
-- `iris_{department_number}.gpkg`
-
-**Required files**:  
-- `iris_75.gpkg`  
-- `iris_77.gpkg`  
-- `iris_78.gpkg`  
-- `iris_91.gpkg`  
-- `iris_92.gpkg`  
-- `iris_93.gpkg`  
-- `iris_94.gpkg`  
-- `iris_95.gpkg`  
-
-📁 Place all `.gpkg` files directly in the `/data` folder.
 
 ---
 
@@ -41,10 +21,7 @@ For each, rename the downloaded `iris.gpkg` file to:
 **Required file**:  
 - `BASE_TD_FILO_DEC_IRIS_2020.csv`
 
-**Official source**:  
-👉 https://www.insee.fr/fr/statistiques/7233950
-
-📁 Place this `.csv` file directly in the `/data` folder.
+**Official source**: https://www.insee.fr/fr/statistiques/7233950
 
 ---
 
@@ -53,8 +30,7 @@ For each, rename the downloaded `iris.gpkg` file to:
 **Required file**:  
 - `reve-niv-vie-individu-age-med.xlsx`
 
-**Official source**:  
-👉 https://www.insee.fr/fr/statistiques/2416878
+**Official source**: https://www.insee.fr/fr/statistiques/2416878
 
 ---
 
@@ -63,8 +39,9 @@ For each, rename the downloaded `iris.gpkg` file to:
 **Required file**:
 - `base-ic-evol-struct-pop-2020.xlsx`
 
-**Official source**:
-👉 https://www.insee.fr/fr/statistiques/7704076
+**Official source**: https://www.insee.fr/fr/statistiques/7704076
+
+Place all these files directly in the `/data` folder.
 
 ---
 
@@ -73,25 +50,8 @@ For each, rename the downloaded `iris.gpkg` file to:
 ```
 data/
 ├── BASE_TD_FILO_DEC_IRIS_2020.csv
-├── iris_75.gpkg
-├── iris_77.gpkg
-├── iris_78.gpkg
-├── iris_91.gpkg
-├── iris_92.gpkg
-├── iris_93.gpkg
-├── iris_94.gpkg
-├── iris_95.gpkg
-├── iris_france.gpkg
+├── base-ic-evol-struct-pop-2020.xlsx
+├── contours-iris.gpkg
+├── reve-niv-vie-individu-age-med.xlsx
 └── README.md
 ```
-
----
-
-## 📝 Notes
-
-- These files are not included in the Git repository to avoid versioning large binaries or redistributing official datasets.
-- Make sure that the filenames match exactly those expected in the notebooks.
-- If you rename or move any file, update the relevant paths in the notebooks or in `utils.py`.
-
----
-
