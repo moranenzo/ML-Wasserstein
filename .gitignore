@@ -1,1 +1,5 @@
-src/__pycache__/utils.cpython-313.pyc
+data/*
+!data/README.md
+
+src/*.pyc
+src/__pycache__/
